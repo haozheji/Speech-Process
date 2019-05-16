@@ -9,7 +9,8 @@ import platform as plat
 
 from SpeechModel251 import ModelSpeech
 from LanguageModel2 import ModelLanguage
-
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 datapath = ''
 modelpath = 'model_speech'
@@ -35,7 +36,7 @@ ms.LoadModel(modelpath + 'speech_model251_e_0_step_12000.model')
 #r = ms.RecognizeSpeech_FromFile('E:\语音数据集\ST-CMDS-20170001_1-OS\\20170001P00241I0053.wav')
 #r = ms.RecognizeSpeech_FromFile('E:\\语音数据集\\ST-CMDS-20170001_1-OS\\20170001P00020I0087.wav')
 #r = ms.RecognizeSpeech_FromFile('E:\\语音数据集\\wav\\train\\A11\\A11_167.WAV')
-r = ms.RecognizeSpeech_FromFile('/home/jihaozhe/ASRT_v0.5.0/output.wav')#'E:\\语音数据集\\wav\\test\\D4\\D4_750.wav')
+r = ms.RecognizeSpeech_FromFile('output.wav')#'E:\\语音数据集\\wav\\test\\D4\\D4_750.wav')
 
 print('*[提示] 语音识别结果：\n',r)
 
