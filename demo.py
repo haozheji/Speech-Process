@@ -1,6 +1,6 @@
 import sys
 import array
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QMessageBox, QLabel, QTextEdit
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot
 #from record import Recorder
@@ -72,8 +72,8 @@ class App(QWidget):
         self.title = 'ASR demo'
         self.left = 10
         self.top = 10
-        self.width = 320
-        self.height = 200
+        self.width = 420
+        self.height = 400
         self.rec = Recorder()
         #self.rec.start_thread()
         self.initUI()
@@ -97,15 +97,29 @@ class App(QWidget):
         button.move(100,70)
         button.clicked.connect(self.start_record)
         
-        button = QPushButton('Stop', self)
-        button.setToolTip('Press to stop recording')
-        button.move(100,100)
+        button = QPushButton('To Transcript', self)
+        button.setToolTip('Press to convert to transcript')
+        button.move(200,70)
         button.clicked.connect(self.stop_record)
 
-        self.results=QLabel(self)
-        self.results.move(100,140)
+        button = QPushButton('Clear', self)
+        button.setToolTip('Press to clear transcripts')
+        button.move(100,100)
+        button.clicked.connect(self.clear)
+
+        self.text_edit = QTextEdit("What you said: ",self)
+        self.text_edit.setReadOnly(True)
+        self.text_edit.move(100,140)
+
+        #self.results=QLabel(self)
+        #self.results.move(100,140)
 
         self.show()
+
+    @pyqtSlot()
+    def clear(self):
+        self.text_edit.clear()
+        self.text_edit.append("What you said: ")
 
     @pyqtSlot()
     def start_record(self):
@@ -123,7 +137,7 @@ class App(QWidget):
         r = self.ms.RecognizeSpeech_FromFile(self.record_name)
         self.w = self.ml.SpeechToText(r)
         print('语音转文字结果：\n',self.w)
-        self.results.setText(self.w)
+        self.text_edit.append(self.w)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
