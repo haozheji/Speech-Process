@@ -55,6 +55,91 @@ class ModelSpeech(): # 语音模型类
 		if(self.slash != self.datapath[-1]): # 在目录路径末尾增加斜杠
 			self.datapath = self.datapath + self.slash
 
+	def CreateBNModel(self):
+		dropout_rate = 0.1
+		input_data = Input(name='the_input', shape=(self.AUDIO_LENGTH, self.AUDIO_FEATURE_LENGTH, 1))
+
+		layer_h1 = Conv2D(32, (3, 3), use_bias=False, activation='relu', padding='same',
+						  kernel_initializer='he_normal')(input_data)  # 卷积层
+		layer_h1 = Dropout(0.05)(layer_h1)
+		layer_h2 = Conv2D(32, (3, 3), use_bias=True, activation='relu', padding='same', kernel_initializer='he_normal')(
+			layer_h1)  # 卷积层
+		layer_h3 = MaxPooling2D(pool_size=2, strides=None, padding="valid")(layer_h2)  # 池化层
+		# layer_h3 = Dropout(0.2)(layer_h2) # 随机中断部分神经网络连接，防止过拟合
+		layer_h3 = Dropout(0.05)(layer_h3)
+		layer_h4 = Conv2D(64, (3, 3), use_bias=True, activation='relu', padding='same', kernel_initializer='he_normal')(
+			layer_h3)  # 卷积层
+		layer_h4 = Dropout(0.1)(layer_h4)
+		layer_h5 = Conv2D(64, (3, 3), use_bias=True, activation='relu', padding='same', kernel_initializer='he_normal')(
+			layer_h4)  # 卷积层
+		layer_h6 = MaxPooling2D(pool_size=2, strides=None, padding="valid")(layer_h5)  # 池化层
+
+		layer_h6 = Dropout(0.1)(layer_h6)
+		layer_h7 = Conv2D(128, (3, 3), use_bias=True, activation='relu', padding='same',
+						  kernel_initializer='he_normal')(layer_h6)  # 卷积层
+		layer_h7 = Dropout(0.15)(layer_h7)
+		layer_h8 = Conv2D(128, (3, 3), use_bias=True, activation='relu', padding='same',
+						  kernel_initializer='he_normal')(layer_h7)  # 卷积层
+		layer_h9 = MaxPooling2D(pool_size=2, strides=None, padding="valid")(layer_h8)  # 池化层
+
+		layer_h9 = Dropout(0.15)(layer_h9)
+		layer_h10 = Conv2D(128, (3, 3), use_bias=True, activation='relu', padding='same',
+						   kernel_initializer='he_normal')(layer_h9)  # 卷积层
+		layer_h10 = Dropout(0.2)(layer_h10)
+		layer_h11 = Conv2D(128, (3, 3), use_bias=True, activation='relu', padding='same',
+						   kernel_initializer='he_normal')(layer_h10)  # 卷积层
+		layer_h12 = MaxPooling2D(pool_size=1, strides=None, padding="valid")(layer_h11)  # 池化层
+
+		layer_h12 = Dropout(0.2)(layer_h12)
+		layer_h13 = Conv2D(128, (3, 3), use_bias=True, activation='relu', padding='same',
+						   kernel_initializer='he_normal')(layer_h12)  # 卷积层
+		layer_h13 = Dropout(0.2)(layer_h13)
+		layer_h14 = Conv2D(128, (3, 3), use_bias=True, activation='relu', padding='same',
+						   kernel_initializer='he_normal')(layer_h13)  # 卷积层
+		layer_h15 = MaxPooling2D(pool_size=1, strides=None, padding="valid")(layer_h14)  # 池化层
+
+		# test=Model(inputs = input_data, outputs = layer_h12)
+		# test.summary()
+
+		layer_h16 = Reshape((200, 3200))(layer_h15)  # Reshape层
+		# layer_h5 = LSTM(256, activation='relu', use_bias=True, return_sequences=True)(layer_h4) # LSTM层
+		# layer_h6 = Dropout(0.2)(layer_h5) # 随机中断部分神经网络连接，防止过拟合
+		layer_h16 = Dropout(0.3)(layer_h16)
+		layer_h17 = Dense(128, activation="relu", use_bias=True, kernel_initializer='he_normal')(layer_h16)  # 全连接层
+		layer_h17 = Dropout(0.3)(layer_h17)
+		layer_h18 = Dense(self.MS_OUTPUT_SIZE, use_bias=True, kernel_initializer='he_normal')(layer_h17)  # 全连接层
+
+		y_pred = Activation('softmax', name='Activation0')(layer_h18)
+		model_data = Model(inputs=input_data, outputs=y_pred)
+		# model_data.summary()
+
+		labels = Input(name='the_labels', shape=[self.label_max_string_length], dtype='float32')
+		input_length = Input(name='input_length', shape=[1], dtype='int64')
+		label_length = Input(name='label_length', shape=[1], dtype='int64')
+		# Keras doesn't currently support loss funcs with extra parameters
+		# so CTC loss is implemented in a lambda layer
+
+		# layer_out = Lambda(ctc_lambda_func,output_shape=(self.MS_OUTPUT_SIZE, ), name='ctc')([y_pred, labels, input_length, label_length])#(layer_h6) # CTC
+		loss_out = Lambda(self.ctc_lambda_func, output_shape=(1,), name='ctc')(
+			[y_pred, labels, input_length, label_length])
+
+		model = Model(inputs=[input_data, labels, input_length, label_length], outputs=loss_out)
+
+		# model.summary()
+
+		# clipnorm seems to speeds up convergence
+		# sgd = SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True, clipnorm=5)
+		# opt = Adadelta(lr = 0.01, rho = 0.95, epsilon = 1e-06)
+		opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, decay=0.0, epsilon=10e-8)
+		# model.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=sgd)
+		model.compile(loss={'ctc': lambda y_true, y_pred: y_pred}, optimizer=opt)
+
+		# captures output of softmax so we can decode the output during visualization
+		test_func = K.function([input_data], [y_pred])
+
+		# print('[*提示] 创建模型成功，模型编译成功')
+		print('[*Info] Create Model Successful, Compiles Model Successful. ')
+		return model, model_data
 
 	def CreateModel(self):
 		'''

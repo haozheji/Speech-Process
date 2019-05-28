@@ -134,9 +134,9 @@ class App(QWidget):
         #print('PyQt5 button click')
         self.rec.stop()
         self.rec.save(self.record_name)
-        r = self.ms.RecognizeSpeech_FromFile(self.record_name)
-        self.w = self.ml.SpeechToText(r)
-        print('语音转文字结果：\n',self.w)
+        r = self.ms.RecognizeSpeech_FromFile(self.record_name) #由语音到拼音
+        self.w = self.ml.SpeechToText(r) #由拼音到文字
+        print('语音转文字结果：\n',self.w, r)
         self.text_edit.append(self.w)
 
 if __name__ == '__main__':

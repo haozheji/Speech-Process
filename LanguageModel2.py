@@ -44,7 +44,7 @@ class ModelLanguage(): # 语音模型类
 
 		实现从语音拼音符号到最终文本的转换
 
-		使用恐慌模式处理一次解码失败的情况
+		使用恐慌模式处理一次解码失败的情况   ？？？
 		'''
 		length = len(list_syllable)
 		if(length == 0): # 传入的参数没有包含任何拼音时
@@ -58,12 +58,12 @@ class ModelLanguage(): # 语音模型类
 
 		while(len(tmp_list_syllable) > 0):
 			# 进行拼音转汉字解码，存储临时结果
-			tmp_lst_result = self.decode(tmp_list_syllable, 0.0)
+			tmp_lst_result = self.decode(tmp_list_syllable, yuzhi = 0)
 			
 			if(len(tmp_lst_result) > 0): # 有结果，不用恐慌
 				str_result = str_result + tmp_lst_result[0][0]
 				
-			while(len(tmp_lst_result) == 0): # 没结果，开始恐慌
+			while(len(tmp_lst_result) == 0): # 没结果，开始恐慌 start to panic
 				# 插入最后一个拼音
 				lst_syllable_remain.insert(0, tmp_list_syllable[-1])
 				# 删除最后一个拼音
@@ -88,14 +88,14 @@ class ModelLanguage(): # 语音模型类
 		基于马尔可夫链
 		'''
 		#assert self.dic_pinyin == null or self.model1 == null or self.model2 == null
-		list_words = []
+		list_words = []  #最终结果的备选（王）
 		
 		num_pinyin = len(list_syllable)
 		#print('======')
 		#print('decode function: list_syllable\n',list_syllable)
 		#print(num_pinyin)
 		# 开始语音解码
-		for i in range(num_pinyin):
+		for i in range(num_pinyin):  # 对每一个字循环（王）
 			#print(i)
 			ls = ''
 			if(list_syllable[i] in self.dict_pinyin): # 如果这个拼音在汉语拼音字典里的话
@@ -109,36 +109,37 @@ class ModelLanguage(): # 语音模型类
 				# 第一个字做初始处理
 				num_ls = len(ls)
 				for j in range(num_ls):
-					tuple_word = ['',0.0]
+					#  tuple_word = ['',0.0]
 					# 设置马尔科夫模型初始状态值
 					# 设置初始概率，置为1.0
 					tuple_word = [ls[j], 1.0]
 					#print(tuple_word)
 					# 添加到可能的句子列表
-					list_words.append(tuple_word)
+					list_words.append(tuple_word) # 添加到备选句子中（王）
 				
 				#print(list_words)
 				continue
-			else:
+			else:   # 这是二元模型（王）
 				# 开始处理紧跟在第一个字后面的字
-				list_words_2 = []
-				num_ls_word = len(list_words)
+				list_words_2 = []  # 用于记录最终保留的句子，也可以说是保留的路径（王）
+				num_ls_word = len(list_words) # 备选句子的个数（王）
 				#print('ls_wd: ',list_words)
-				for j in range(0, num_ls_word):
+				for j in range(0, num_ls_word):  # 更新每一个备选（王）
 					
-					num_ls = len(ls)
-					for k in range(0, num_ls):
-						tuple_word = ['',0.0]
-						tuple_word = list(list_words[j]) # 把现有的每一条短语取出来
+					num_ls = len(ls)  # 当前备选字的个数（王）
+					for k in range(0, num_ls): # 对每一个备选字（王）
+						# tuple_word = ['',0.0]
+						tuple_word = list(list_words[j]) # 把现有的每一条短语取出来  取出当前的备选句子（王）
 						#print('tw1: ',tuple_word)
 						tuple_word[0] = tuple_word[0] + ls[k] # 尝试按照下一个音可能对应的全部的字进行组合
-						#print('ls[k]  ',ls[k])
+						#print('ls[k]  ',ls[k])  将新的字加到最后（王）
 						
 						tmp_words = tuple_word[0][-2:] # 取出用于计算的最后两个字
 						#print('tmp_words: ',tmp_words,tmp_words in self.model2)
 						if(tmp_words in self.model2): # 判断它们是不是再状态转移表里
 							#print(tmp_words,tmp_words in self.model2)
-							tuple_word[1] = tuple_word[1] * float(self.model2[tmp_words]) / float(self.model1[tmp_words[-2]])
+							tuple_word[1] = tuple_word[1] *(float(self.model2[tmp_words])+1.0) / (float(self.model1[tmp_words[-2]])+1.0)
+							# 添加拉普拉斯平滑（王）
 							# 核心！在当前概率上乘转移概率，公式化简后为第n-1和n个字出现的次数除以第n-1个字出现的次数
 							#print(self.model2[tmp_words],self.model1[tmp_words[-2]])
 						else:
@@ -150,10 +151,10 @@ class ModelLanguage(): # 语音模型类
 							# 大于阈值之后保留，否则丢弃
 							list_words_2.append(tuple_word)
 						
-				list_words = list_words_2
+				list_words = list_words_2  # 更新当前可能路径（王）
 				#print(list_words,'\n')
 		#print(list_words)
-		for i in range(0, len(list_words)):
+		for i in range(0, len(list_words)):   # 对句子概率进行冒泡排序（王）
 			for j in range(i + 1, len(list_words)):
 				if(list_words[i][1] < list_words[j][1]):
 					tmp = list_words[i]
